@@ -1,0 +1,3430 @@
+openapi: 3.0.3
+info:
+  title: Car Rental Management API
+  description: |
+    API for managing car rental bookings and vehicle fleet.
+
+    This API provides endpoints for:
+    - Managing vehicle inventory
+    - Creating and managing bookings
+    - Tracking payments and returns
+
+    All dates are in ISO 8601 format and amounts are in decimal format with 2 decimal places.
+    Phone numbers follow Malawi format (+265 XXX XXX XXX).
+  version: 1.0.0
+  contact:
+    name: Car Rental API Support
+    email: support@carrental.mw
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: https://api.never9to5ive.com/v1
+    description: Production server
+  - url: http://localhost:3003/v1/
+    description: Development server
+
+paths:
+  /api/bookings:
+    get:
+      tags:
+        - Bookings
+      summary: Get all bookings
+      description: Retrieve a list of all bookings with related vehicle and payment information
+      responses:
+        '200':
+          description: Successfully retrieved bookings
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BookingListResponse'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    post:
+      tags:
+        - Bookings
+      summary: Create new booking
+      description: Create a new booking with client and vehicle information
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateBookingRequest'
+      responses:
+        '201':
+          description: Booking created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BookingResponse'
+        '400':
+          description: Bad request - missing required fields or validation errors
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                missing_field:
+                  value:
+                    success: false
+                    error: "Missing required field: clientName"
+                invalid_dates:
+                  value:
+                    success: false
+                    error: "End date must be after start date"
+                invalid_date_format:
+                  value:
+                    success: false
+                    error: "Invalid date format"
+
+  /api/bookings/{id}:
+    get:
+      tags:
+        - Bookings
+      summary: Get booking by ID
+      description: Retrieve a specific booking with related vehicle and payment information
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+          description: Booking ID
+      responses:
+        '200':
+          description: Successfully retrieved booking
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BookingResponse'
+        '400':
+          description: Invalid booking ID
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Booking not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    put:
+      tags:
+        - Bookings
+      summary: Update existing booking
+      description: Update an existing booking with new information
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+          description: Booking ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateBookingRequest'
+      responses:
+        '200':
+          description: Booking updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BookingResponse'
+        '400':
+          description: Invalid booking ID or validation errors
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Booking not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    delete:
+      tags:
+        - Bookings
+      summary: Delete booking
+      description: Delete a specific booking
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+          description: Booking ID
+      responses:
+        '200':
+          description: Booking deleted successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '400':
+          description: Invalid booking ID
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Booking not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/bookings/active:
+    get:
+      tags:
+        - Bookings
+      summary: Get active bookings
+      description: Retrieve all bookings with status 'Active'
+      responses:
+        '200':
+          description: Successfully retrieved active bookings
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BookingListResponse'
+
+  /api/vehicles:
+    get:
+      tags:
+        - Vehicles
+      summary: Get all vehicles
+      description: Retrieve a list of all vehicles in the fleet
+      responses:
+        '200':
+          description: Successfully retrieved vehicles
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VehicleListResponse'
+        '500':
+          description: Server error with fallback data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VehicleErrorResponse'
+
+    post:
+      tags:
+        - Vehicles
+      summary: Create new vehicle
+      description: Add a new vehicle to the fleet
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateVehicleRequest'
+      responses:
+        '201':
+          description: Vehicle created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VehicleResponse'
+        '400':
+          description: Bad request - missing required fields or validation errors
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                missing_field:
+                  value:
+                    success: false
+                    error: "Missing required field: plateNumber"
+                invalid_status:
+                  value:
+                    success: false
+                    error: "Invalid status. Must be one of: Available, Rented, Maintenance, Out of Service"
+        '409':
+          description: Conflict - duplicate plate number
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                success: false
+                error: "Vehicle with this plate number already exists"
+
+  /api/vehicles/available:
+    get:
+      tags:
+        - Vehicles
+      summary: Get available vehicles
+      description: Retrieve all vehicles with status 'Available'
+      responses:
+        '200':
+          description: Successfully retrieved available vehicles
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VehicleListResponse'
+
+  /api/vehicles/{id}:
+    get:
+      tags:
+        - Vehicles
+      summary: Get vehicle by ID
+      description: Retrieve a specific vehicle by its ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+          description: Vehicle ID
+      responses:
+        '200':
+          description: Successfully retrieved vehicle
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VehicleResponse'
+        '400':
+          description: Invalid vehicle ID
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Vehicle not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    put:
+      tags:
+        - Vehicles
+      summary: Update vehicle
+      description: Update an existing vehicle with new information
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+          description: Vehicle ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateVehicleRequest'
+      responses:
+        '200':
+          description: Vehicle updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VehicleResponse'
+        '400':
+          description: Invalid vehicle ID or validation errors
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Vehicle not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    delete:
+      tags:
+        - Vehicles
+      summary: Delete vehicle
+      description: Delete a specific vehicle from the fleet
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+          description: Vehicle ID
+      responses:
+        '200':
+          description: Vehicle deleted successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '400':
+          description: Invalid vehicle ID
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Vehicle not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/vehicles/{id}/status:
+    patch:
+      tags:
+        - Vehicles
+      summary: Update vehicle status
+      description: Update only the status of a specific vehicle
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+          description: Vehicle ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - status
+              properties:
+                status:
+                  $ref: '#/components/schemas/VehicleStatus'
+      responses:
+        '200':
+          description: Vehicle status updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VehicleResponse'
+        '400':
+          description: Bad request - missing or invalid status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                missing_status:
+                  value:
+                    success: false
+                    error: "Status is required"
+                invalid_status:
+                  value:
+                    success: false
+                    error: "Invalid status. Must be one of: Available, Rented, Maintenance, Out of Service"
+        '404':
+          description: Vehicle not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/vehicles/{vehicleId}/images:
+    get:
+      summary: Get all images for a specific vehicle
+      description: Retrieve all images associated with a vehicle, ordered by sortOrder and creation date
+      operationId: getVehicleImages
+      tags:
+        - Vehicle Images
+      parameters:
+        - name: vehicleId
+          in: path
+          required: true
+          description: The ID of the vehicle
+          schema:
+            type: integer
+            minimum: 1
+            example: 123
+      responses:
+        '200':
+          description: Images retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/VehicleImage'
+              example:
+                success: true
+                data:
+                  - id: 1
+                    vehicleId: 123
+                    imageUrl: "/uploads/vehicles/uuid-123456789-timestamp.jpg"
+                    imageType: "front"
+                    description: "Front view of the vehicle"
+                    fileName: "car_front.jpg"
+                    mimeType: "image/jpeg"
+                    fileSize: 2048576
+                    sortOrder: 0
+                    isPrimary: true
+                    createdAt: "2024-01-15T10:30:00.000Z"
+                    updatedAt: "2024-01-15T10:30:00.000Z"
+        '400':
+          description: Invalid vehicle ID
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                success: false
+                error: "Invalid vehicle ID"
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                success: false
+                error: "Failed to fetch images"
+
+    post:
+      summary: Upload images for a vehicle
+      description: Upload multiple images for a specific vehicle with optional metadata
+      operationId: uploadVehicleImages
+      tags:
+        - Vehicle Images
+      parameters:
+        - name: vehicleId
+          in: path
+          required: true
+          description: The ID of the vehicle
+          schema:
+            type: integer
+            minimum: 1
+            example: 123
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                images:
+                  type: array
+                  items:
+                    type: string
+                    format: binary
+                  description: Image files to upload (max 10 files, 5MB each)
+                  maxItems: 10
+                imageMetadata:
+                  type: string
+                  description: JSON string containing metadata for each image
+                  example: '[{"imageType":"front","description":"Front view","isPrimary":true,"sortOrder":0},{"imageType":"side","description":"Side view","isPrimary":false,"sortOrder":1}]'
+              required:
+                - images
+            encoding:
+              images:
+                contentType: image/jpeg, image/jpg, image/png, image/gif, image/webp
+      responses:
+        '201':
+          description: Images uploaded successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    properties:
+                      vehicleId:
+                        type: integer
+                        example: 123
+                      uploadedImages:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/VehicleImage'
+              example:
+                success: true
+                data:
+                  vehicleId: 123
+                  uploadedImages:
+                    - id: 1
+                      vehicleId: 123
+                      imageUrl: "/uploads/vehicles/uuid-123456789-timestamp.jpg"
+                      imageType: "front"
+                      description: "Front view of the vehicle"
+                      fileName: "car_front.jpg"
+                      mimeType: "image/jpeg"
+                      fileSize: 2048576
+                      sortOrder: 0
+                      isPrimary: true
+                      createdAt: "2024-01-15T10:30:00.000Z"
+                      updatedAt: "2024-01-15T10:30:00.000Z"
+        '400':
+          description: Bad request - invalid vehicle ID or no images provided
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                invalidVehicleId:
+                  summary: Invalid vehicle ID
+                  value:
+                    success: false
+                    error: "Invalid vehicle ID"
+                noImages:
+                  summary: No images provided
+                  value:
+                    success: false
+                    error: "No images provided"
+        '404':
+          description: Vehicle not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                success: false
+                error: "Vehicle not found"
+        '413':
+          description: File too large
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                success: false
+                error: "File too large"
+        '415':
+          description: Unsupported media type
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                success: false
+                error: "Only image files are allowed (jpeg, jpg, png, gif, webp)"
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                success: false
+                error: "Failed to upload images"
+
+  /api/images/{imageId}:
+    put:
+      summary: Update image metadata
+      description: Update metadata for a specific vehicle image (description, type, order, primary status)
+      operationId: updateVehicleImage
+      tags:
+        - Vehicle Images
+      parameters:
+        - name: imageId
+          in: path
+          required: true
+          description: The ID of the image to update
+          schema:
+            type: integer
+            minimum: 1
+            example: 456
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VehicleImageUpdateRequest'
+            example:
+              imageType: "interior"
+              description: "Updated interior view"
+              sortOrder: 2
+              isPrimary: false
+      responses:
+        '200':
+          description: Image updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/VehicleImage'
+              example:
+                success: true
+                data:
+                  id: 456
+                  vehicleId: 123
+                  imageUrl: "/uploads/vehicles/uuid-987654321-timestamp.jpg"
+                  imageType: "interior"
+                  description: "Updated interior view"
+                  fileName: "car_interior.jpg"
+                  mimeType: "image/jpeg"
+                  fileSize: 1548576
+                  sortOrder: 2
+                  isPrimary: false
+                  createdAt: "2024-01-15T10:30:00.000Z"
+                  updatedAt: "2024-01-15T11:45:00.000Z"
+        '400':
+          description: Invalid image ID
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                success: false
+                error: "Invalid image ID"
+        '404':
+          description: Image not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                success: false
+                error: "Image not found"
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                success: false
+                error: "Failed to update image"
+
+    delete:
+      summary: Delete a vehicle image
+      description: Delete a specific vehicle image and its associated file from the server
+      operationId: deleteVehicleImage
+      tags:
+        - Vehicle Images
+      parameters:
+        - name: imageId
+          in: path
+          required: true
+          description: The ID of the image to delete
+          schema:
+            type: integer
+            minimum: 1
+            example: 456
+      responses:
+        '200':
+          description: Image deleted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "Image deleted successfully"
+        '400':
+          description: Invalid image ID
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                success: false
+                error: "Invalid image ID"
+        '404':
+          description: Image not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                success: false
+                error: "Image not found"
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                success: false
+                error: "Failed to delete image"
+
+  /api/prices:
+    get:
+      tags:
+        - Pricing
+      summary: Get all prices
+      description: Retrieve all pricing records with destination information
+      responses:
+        '200':
+          description: Successfully retrieved prices
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PricesResponse'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    post:
+      tags:
+        - Pricing
+      summary: Create new price
+      description: Create a new pricing record for a vehicle type and destination
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreatePriceRequest'
+      responses:
+        '201':
+          description: Price created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PriceResponse'
+        '400':
+          description: Bad request - missing fields or duplicate
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/prices/filter:
+    get:
+      tags:
+        - Pricing
+      summary: Filter prices
+      description: Filter prices by vehicle type and/or destination
+      parameters:
+        - name: vehicleType
+          in: query
+          description: Vehicle type to filter by
+          schema:
+            type: string
+            example: "SUV"
+        - name: destinationId
+          in: query
+          description: Destination ID to filter by
+          schema:
+            type: integer
+            example: 1
+      responses:
+        '200':
+          description: Successfully retrieved filtered prices
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PricesResponse'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/prices/{id}:
+    put:
+      tags:
+        - Pricing
+      summary: Update price
+      description: Update an existing price record
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Price ID
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdatePriceRequest'
+      responses:
+        '200':
+          description: Price updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PriceResponse'
+        '404':
+          description: Price not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    delete:
+      tags:
+        - Pricing
+      summary: Delete price
+      description: Delete a price record (soft delete - sets isActive to false)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Price ID
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Price deleted successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '404':
+          description: Price not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # Destination Endpoints
+  /api/prices/destinations:
+    get:
+      tags:
+        - Destinations
+      summary: Get all destinations
+      description: Retrieve all available destinations
+      responses:
+        '200':
+          description: Successfully retrieved destinations
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DestinationsResponse'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    post:
+      tags:
+        - Destinations
+      summary: Create new destination
+      description: Create a new destination
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateDestinationRequest'
+      responses:
+        '201':
+          description: Destination created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DestinationResponse'
+        '400':
+          description: Bad request - missing fields or duplicate
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # Maintenance Endpoints
+  /api/maintenance:
+    get:
+      tags:
+        - Maintenance
+      summary: Get all maintenance records
+      description: Retrieve all maintenance records with vehicle information
+      responses:
+        '200':
+          description: Successfully retrieved maintenance records
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MaintenanceListResponse'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    post:
+      tags:
+        - Maintenance
+      summary: Create maintenance record
+      description: Create a new maintenance record for a vehicle
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateMaintenanceRequest'
+      responses:
+        '201':
+          description: Maintenance record created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MaintenanceResponse'
+        '400':
+          description: Bad request - missing required fields
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Vehicle not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/maintenance/{id}:
+    get:
+      tags:
+        - Maintenance
+      summary: Get maintenance record by ID
+      description: Retrieve a specific maintenance record
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Maintenance record ID
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Successfully retrieved maintenance record
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MaintenanceResponse'
+        '404':
+          description: Maintenance record not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    put:
+      tags:
+        - Maintenance
+      summary: Update maintenance record
+      description: Update an existing maintenance record
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Maintenance record ID
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateMaintenanceRequest'
+      responses:
+        '200':
+          description: Maintenance record updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MaintenanceResponse'
+        '404':
+          description: Maintenance record not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    delete:
+      tags:
+        - Maintenance
+      summary: Delete maintenance record
+      description: Delete a maintenance record
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Maintenance record ID
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Maintenance record deleted successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '404':
+          description: Maintenance record not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/maintenance/upcoming:
+    get:
+      tags:
+        - Maintenance
+      summary: Get upcoming maintenance
+      description: Retrieve maintenance records due within 30 days
+      responses:
+        '200':
+          description: Successfully retrieved upcoming maintenance
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MaintenanceListResponse'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/reports/vehicle-utilization:
+    get:
+      tags:
+        - Reports
+      summary: Vehicle Utilization Report
+      description: Generate report showing vehicle usage statistics including booking counts and total days rented
+      parameters:
+        - name: startDate
+          in: query
+          description: Start date for the report period (YYYY-MM-DD format)
+          schema:
+            type: string
+            format: date
+            example: "2025-01-01"
+        - name: endDate
+          in: query
+          description: End date for the report period (YYYY-MM-DD format)
+          schema:
+            type: string
+            format: date
+            example: "2025-01-31"
+      responses:
+        '200':
+          description: Vehicle utilization report generated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VehicleUtilizationResponse'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/reports/revenue:
+    get:
+      tags:
+        - Reports
+      summary: Revenue Report
+      description: Generate daily revenue report with summary statistics
+      parameters:
+        - name: startDate
+          in: query
+          description: Start date for the report period (YYYY-MM-DD format)
+          schema:
+            type: string
+            format: date
+            example: "2025-01-01"
+        - name: endDate
+          in: query
+          description: End date for the report period (YYYY-MM-DD format)
+          schema:
+            type: string
+            format: date
+            example: "2025-01-31"
+      responses:
+        '200':
+          description: Revenue report generated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RevenueResponse'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/reports/bookings:
+    get:
+      tags:
+        - Reports
+      summary: Booking Report
+      description: Generate booking statistics report with status breakdown and monthly trends
+      parameters:
+        - name: startDate
+          in: query
+          description: Start date for the report period (YYYY-MM-DD format)
+          schema:
+            type: string
+            format: date
+            example: "2025-01-01"
+        - name: endDate
+          in: query
+          description: End date for the report period (YYYY-MM-DD format)
+          schema:
+            type: string
+            format: date
+            example: "2025-01-31"
+      responses:
+        '200':
+          description: Booking report generated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BookingResponse'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/reports/maintenance:
+    get:
+      tags:
+        - Reports
+      summary: Maintenance Report
+      description: Generate maintenance statistics report with service type breakdown and upcoming maintenance
+      parameters:
+        - name: startDate
+          in: query
+          description: Start date for the report period (YYYY-MM-DD format)
+          schema:
+            type: string
+            format: date
+            example: "2025-01-01"
+        - name: endDate
+          in: query
+          description: End date for the report period (YYYY-MM-DD format)
+          schema:
+            type: string
+            format: date
+            example: "2025-01-31"
+      responses:
+        '200':
+          description: Maintenance report generated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MaintenanceReportResponse'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/reports/dashboard:
+    get:
+      tags:
+        - Reports
+      summary: Dashboard Summary
+      description: Generate comprehensive dashboard summary with key metrics across all modules
+      responses:
+        '200':
+          description: Dashboard summary generated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DashboardResponse'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  error:
+                    type: string
+                    example: "Failed to generate dashboard summary"
+
+  /api/reports/popular-destinations:
+    get:
+      tags:
+        - Reports
+      summary: Popular Destinations Report
+      description: Generate report showing most popular booking destinations by count and revenue
+      parameters:
+        - name: limit
+          in: query
+          description: Number of destinations to return
+          schema:
+            type: integer
+            minimum: 1
+            default: 10
+            example: 5
+      responses:
+        '200':
+          description: Popular destinations report generated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PopularDestinationsResponse'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  error:
+                    type: string
+                    example: "Failed to fetch popular destinations"
+  /api/users:
+    get:
+      tags:
+        - Users
+      summary: Get all users
+      description: Retrieve a list of all users in the system
+      responses:
+        '200':
+          description: Successfully retrieved users
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/UserResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    post:
+      tags:
+        - Users
+      summary: Create new user
+      description: Create a new user account
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateUserRequest'
+      responses:
+        '201':
+          description: User created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/UserResponse'
+        '400':
+          description: Bad request - validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                missing_fields:
+                  summary: Missing required fields
+                  value:
+                    success: false
+                    error: "First name, last name, email, and password are required"
+                invalid_email:
+                  summary: Invalid email format
+                  value:
+                    success: false
+                    error: "Invalid email format"
+        '409':
+          description: Conflict - email already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                success: false
+                error: "User with this email already exists"
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/users/stats:
+    get:
+      tags:
+        - Statistics
+      summary: Get user statistics
+      description: Retrieve statistical information about users
+      responses:
+        '200':
+          description: Successfully retrieved user statistics
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/UserStats'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/users/{id}:
+    get:
+      tags:
+        - Users
+      summary: Get user by ID
+      description: Retrieve a specific user by their ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: User ID
+          schema:
+            type: integer
+            example: 1
+      responses:
+        '200':
+          description: Successfully retrieved user
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/UserResponse'
+        '400':
+          description: Bad request - invalid user ID
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                success: false
+                error: "Invalid user ID"
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                success: false
+                error: "User not found"
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    put:
+      tags:
+        - Users
+      summary: Update user
+      description: Update an existing user's information
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: User ID
+          schema:
+            type: integer
+            example: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateUserRequest'
+      responses:
+        '200':
+          description: User updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/UserResponse'
+        '400':
+          description: Bad request - validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Conflict - email already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    delete:
+      tags:
+        - Users
+      summary: Delete/deactivate user
+      description: Soft delete a user by setting their status to inactive
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: User ID
+          schema:
+            type: integer
+            example: 1
+      responses:
+        '200':
+          description: User deactivated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "User deactivated successfully"
+        '400':
+          description: Bad request - invalid user ID
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/users/auth:
+    post:
+      tags:
+        - Authentication
+      summary: Authenticate user (login)
+      description: Authenticate a user and return JWT tokens
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Authentication successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    properties:
+                      user:
+                        $ref: '#/components/schemas/UserResponse'
+                      tokens:
+                        $ref: '#/components/schemas/TokenResponse'
+        '400':
+          description: Bad request - missing credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                success: false
+                error: "Email and password are required"
+        '401':
+          description: Unauthorized - invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                success: false
+                error: "Invalid credentials"
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/users/refresh:
+    post:
+      tags:
+        - Authentication
+      summary: Refresh access token
+      description: Generate new access token using refresh token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - refreshToken
+              properties:
+                refreshToken:
+                  type: string
+                  description: Valid refresh token
+                  example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+      responses:
+        '200':
+          description: Token refreshed successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    properties:
+                      tokens:
+                        $ref: '#/components/schemas/TokenResponse'
+        '400':
+          description: Bad request - missing refresh token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                success: false
+                error: "Refresh token is required"
+        '401':
+          description: Unauthorized - invalid refresh token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                success: false
+                error: "Invalid refresh token"
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/users/logout:
+    post:
+      tags:
+        - Authentication
+      summary: Logout user
+      description: Logout user (client-side token invalidation)
+      responses:
+        '200':
+          description: Logout successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "Logged out successfully"
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+components:
+  schemas:
+    # Booking Schemas
+    Booking:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        clientName:
+          type: string
+          example: "John Doe"
+        clientContact:
+          type: string
+          pattern: '^\+265 \d{3} \d{3} \d{3}$'
+          example: "+265 999 123 456"
+        clientEmail:
+          type: string
+          format: email
+          example: "john@example.com"
+        nextOfKinName:
+          type: string
+          example: "Jane Doe"
+          nullable: true
+        nextOfKinContact:
+          type: string
+          pattern: '^\+265 \d{3} \d{3} \d{3}$'
+          example: "+265 888 654 321"
+          nullable: true
+        destination:
+          type: string
+          example: "Lilongwe"
+          nullable: true
+        dayOut:
+          type: string
+          format: date-time
+          example: "2025-07-25T08:00:00.000Z"
+        dayIn:
+          type: string
+          format: date-time
+          example: "2025-07-28T18:00:00.000Z"
+        expectedAmount:
+          type: number
+          format: decimal
+          minimum: 0
+          example: 270000.00
+        status:
+          $ref: '#/components/schemas/BookingStatus'
+        actualReturnDate:
+          type: string
+          format: date-time
+          example: "2025-07-28T16:30:00.000Z"
+          nullable: true
+        returnNotes:
+          type: string
+          example: "Vehicle returned in good condition"
+          nullable: true
+        vehicleCondition:
+          $ref: '#/components/schemas/VehicleCondition'
+        lateFee:
+          type: number
+          format: decimal
+          minimum: 0
+          example: 0.00
+        notes:
+          type: string
+          example: "Client prefers morning pickup"
+          nullable: true
+        vehicleId:
+          type: integer
+          example: 1
+        createdById:
+          type: integer
+          example: 1
+        createdAt:
+          type: string
+          format: date-time
+          example: "2025-07-20T10:30:00.000Z"
+        updatedAt:
+          type: string
+          format: date-time
+          example: "2025-07-20T10:30:00.000Z"
+        vehicle:
+          $ref: '#/components/schemas/VehicleSummary'
+        payments:
+          type: array
+          items:
+            $ref: '#/components/schemas/Payment'
+
+    CreateBookingRequest:
+      type: object
+      required:
+        - clientName
+        - clientContact
+        - clientEmail
+        - vehicleId
+        - dayOut
+        - dayIn
+        - expectedAmount
+      properties:
+        clientName:
+          type: string
+          example: "John Doe"
+        clientContact:
+          type: string
+          pattern: '^\+265 \d{3} \d{3} \d{3}$'
+          example: "+265 999 123 456"
+        clientEmail:
+          type: string
+          format: email
+          example: "john@example.com"
+        nextOfKinName:
+          type: string
+          example: "Jane Doe"
+        nextOfKinContact:
+          type: string
+          pattern: '^\+265 \d{3} \d{3} \d{3}$'
+          example: "+265 888 654 321"
+        destination:
+          type: string
+          example: "Lilongwe"
+        dayOut:
+          type: string
+          format: date-time
+          example: "2025-07-25T08:00:00.000Z"
+        dayIn:
+          type: string
+          format: date-time
+          example: "2025-07-28T18:00:00.000Z"
+        expectedAmount:
+          type: number
+          format: decimal
+          minimum: 0
+          example: 270000.00
+        vehicleId:
+          type: integer
+          example: 1
+        status:
+          $ref: '#/components/schemas/BookingStatus'
+        notes:
+          type: string
+          example: "Client prefers morning pickup"
+
+    UpdateBookingRequest:
+      type: object
+      properties:
+        clientName:
+          type: string
+          example: "John Smith"
+        clientContact:
+          type: string
+          pattern: '^\+265 \d{3} \d{3} \d{3}$'
+          example: "+265 999 111 222"
+        clientEmail:
+          type: string
+          format: email
+          example: "johnsmith@example.com"
+        destination:
+          type: string
+          example: "Blantyre"
+        dayOut:
+          type: string
+          format: date-time
+          example: "2025-07-26T09:00:00.000Z"
+        dayIn:
+          type: string
+          format: date-time
+          example: "2025-07-29T17:00:00.000Z"
+        expectedAmount:
+          type: number
+          format: decimal
+          minimum: 0
+          example: 300000.00
+        status:
+          $ref: '#/components/schemas/BookingStatus'
+        actualReturnDate:
+          type: string
+          format: date-time
+          example: "2025-07-29T16:30:00.000Z"
+        returnNotes:
+          type: string
+          example: "Vehicle returned in good condition"
+        vehicleCondition:
+          $ref: '#/components/schemas/VehicleCondition'
+        lateFee:
+          type: number
+          format: decimal
+          minimum: 0
+          example: 0.00
+        notes:
+          type: string
+          example: "Updated pickup time"
+
+    BookingStatus:
+      type: string
+      enum:
+        - Pending
+        - Active
+        - Returned
+        - Overdue
+        - Cancelled
+      example: "Active"
+
+    VehicleCondition:
+      type: string
+      enum:
+        - excellent
+        - good
+        - fair
+        - damaged
+      example: "good"
+      nullable: true
+
+    # Vehicle Schemas
+    Vehicle:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        plateNumber:
+          type: string
+          example: "MZ 001 TR"
+        make:
+          type: string
+          example: "Toyota"
+        model:
+          type: string
+          example: "Ractis"
+        year:
+          type: integer
+          minimum: 1900
+          maximum: 2030
+          example: 2018
+        fuelType:
+          type: string
+          example: "Petrol"
+        type:
+          type: string
+          example: "Saloon"
+        mileage:
+          type: integer
+          minimum: 0
+          example: 45000
+        status:
+          $ref: '#/components/schemas/VehicleStatus'
+        lastServiceDate:
+          type: string
+          format: date
+          example: "2024-01-15"
+          nullable: true
+        nextServiceDate:
+          type: string
+          format: date
+          example: "2024-07-15"
+          nullable: true
+        insuranceExpiry:
+          type: string
+          format: date
+          example: "2025-03-20"
+          nullable: true
+        insuranceProvider:
+          type: string
+          example: "NICO General Insurance"
+          nullable: true
+        insuranceCompany:
+          type: string
+          example: "NICO General Insurance"
+          nullable: true
+        insuranceContact:
+          type: string
+          example: "+265 1 820 333"
+          nullable: true
+        insurancePolicyNumber:
+          type: string
+          example: "POL-2024-001"
+          nullable: true
+        insuranceStartDate:
+          type: string
+          format: date
+          example: "2024-03-20"
+          nullable: true
+        insurancePremium:
+          type: number
+          format: decimal
+          example: 150000
+          nullable: true
+        registrationExpiry:
+          type: string
+          format: date
+          example: "2025-12-31"
+          nullable: true
+        cofNumber:
+          type: string
+          example: "COF-2024-001"
+          nullable: true
+        cofExpiry:
+          type: string
+          format: date
+          example: "2024-12-31"
+          nullable: true
+        cofIssueDate:
+          type: string
+          format: date
+          example: "2024-01-01"
+          nullable: true
+        cofAuthority:
+          type: string
+          example: "Road Traffic Department"
+          nullable: true
+        cofContact:
+          type: string
+          example: "+265 1 789 456"
+          nullable: true
+        acquisitionDate:
+          type: string
+          format: date
+          example: "2018-05-15"
+          nullable: true
+        imageUrl:
+          type: string
+          example: "/uploads/vehicles/toyota-ractis-001.jpg"
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+          example: "2024-01-10T08:30:00.000Z"
+        updatedAt:
+          type: string
+          format: date-time
+          example: "2024-01-15T14:20:00.000Z"
+
+    VehicleSummary:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        make:
+          type: string
+          example: "Toyota"
+        model:
+          type: string
+          example: "Corolla"
+        year:
+          type: integer
+          example: 2022
+        licensePlate:
+          type: string
+          example: "MW-001-ABC"
+        status:
+          $ref: '#/components/schemas/VehicleStatus'
+
+    CreateVehicleRequest:
+      type: object
+      required:
+        - plateNumber
+        - make
+        - model
+      properties:
+        plateNumber:
+          type: string
+          example: "MZ 002 TR"
+        make:
+          type: string
+          example: "Honda"
+        model:
+          type: string
+          example: "Fit"
+        year:
+          type: integer
+          minimum: 1900
+          maximum: 2030
+          example: 2020
+        fuelType:
+          type: string
+          example: "Petrol"
+        type:
+          type: string
+          example: "Saloon"
+        mileage:
+          type: integer
+          minimum: 0
+          example: 25000
+        status:
+          $ref: '#/components/schemas/VehicleStatus'
+        imageUrl:
+          type: string
+          example: "/uploads/vehicles/honda-fit-002.jpg"
+        lastServiceDate:
+          type: string
+          format: date
+          example: "2024-06-15"
+        nextServiceDate:
+          type: string
+          format: date
+          example: "2024-12-15"
+        insuranceExpiry:
+          type: string
+          format: date
+          example: "2025-05-30"
+        insuranceProvider:
+          type: string
+          example: "General Alliance Insurance"
+        insuranceCompany:
+          type: string
+          example: "General Alliance Insurance"
+        insuranceContact:
+          type: string
+          example: "+265 1 752 000"
+        insurancePolicyNumber:
+          type: string
+          example: "POL-2024-002"
+        insuranceStartDate:
+          type: string
+          format: date
+          example: "2024-05-30"
+        insurancePremium:
+          type: number
+          format: decimal
+          example: 180000
+        registrationExpiry:
+          type: string
+          format: date
+          example: "2026-01-15"
+        cofNumber:
+          type: string
+          example: "COF-2024-002"
+        cofExpiry:
+          type: string
+          format: date
+          example: "2024-12-31"
+        cofIssueDate:
+          type: string
+          format: date
+          example: "2024-01-15"
+        cofAuthority:
+          type: string
+          example: "Road Traffic Department"
+        cofContact:
+          type: string
+          example: "+265 1 789 456"
+        acquisitionDate:
+          type: string
+          format: date
+          example: "2020-03-10"
+
+    UpdateVehicleRequest:
+      type: object
+      properties:
+        plateNumber:
+          type: string
+          example: "MZ 001 TR"
+        make:
+          type: string
+          example: "Toyota"
+        model:
+          type: string
+          example: "Ractis"
+        year:
+          type: integer
+          minimum: 1900
+          maximum: 2030
+          example: 2018
+        fuelType:
+          type: string
+          example: "Petrol"
+        type:
+          type: string
+          example: "Saloon"
+        mileage:
+          type: integer
+          minimum: 0
+          example: 48000
+        status:
+          $ref: '#/components/schemas/VehicleStatus'
+        lastServiceDate:
+          type: string
+          format: date
+          example: "2024-07-20"
+        nextServiceDate:
+          type: string
+          format: date
+          example: "2025-01-20"
+        insuranceExpiry:
+          type: string
+          format: date
+          example: "2025-03-20"
+        insuranceProvider:
+          type: string
+          example: "NICO General Insurance"
+        insuranceCompany:
+          type: string
+          example: "NICO General Insurance"
+        insuranceContact:
+          type: string
+          example: "+265 1 820 333"
+        insurancePolicyNumber:
+          type: string
+          example: "POL-2024-001"
+        insuranceStartDate:
+          type: string
+          format: date
+          example: "2024-03-20"
+        insurancePremium:
+          type: number
+          format: decimal
+          example: 160000
+        registrationExpiry:
+          type: string
+          format: date
+          example: "2025-12-31"
+        cofNumber:
+          type: string
+          example: "COF-2024-001"
+        cofExpiry:
+          type: string
+          format: date
+          example: "2024-12-31"
+        cofIssueDate:
+          type: string
+          format: date
+          example: "2024-01-01"
+        cofAuthority:
+          type: string
+          example: "Road Traffic Department"
+        cofContact:
+          type: string
+          example: "+265 1 789 456"
+        acquisitionDate:
+          type: string
+          format: date
+          example: "2018-05-15"
+        imageUrl:
+          type: string
+          example: "/uploads/vehicles/toyota-ractis-001.jpg"
+
+    VehicleStatus:
+      type: string
+      enum:
+        - Available
+        - Rented
+        - Maintenance
+        - Out of Service
+      example: "Available"
+
+    # Payment Schema
+    Payment:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        amount:
+          type: number
+          format: decimal
+          example: 135000.00
+        paymentDate:
+          type: string
+          format: date-time
+          example: "2025-07-20T10:30:00.000Z"
+        paymentMethod:
+          type: string
+          example: "Cash"
+        status:
+          type: string
+          example: "Completed"
+        bookingId:
+          type: integer
+          example: 1
+
+    # Response Schemas
+    BookingResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          $ref: '#/components/schemas/Booking'
+
+    BookingListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Booking'
+
+    VehicleResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          $ref: '#/components/schemas/Vehicle'
+
+    VehicleListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Vehicle'
+
+    VehicleErrorResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        error:
+          type: string
+          example: "Failed to fetch vehicles"
+        fallbackData:
+          type: array
+          items:
+            $ref: '#/components/schemas/Vehicle'
+
+    ErrorResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        error:
+          type: string
+          example: "Missing required field: clientName"
+
+    SuccessResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: "Operation completed successfully"
+
+    VehicleImage:
+      type: object
+      properties:
+        id:
+          type: integer
+          description: Unique identifier for the image
+          example: 1
+        vehicleId:
+          type: integer
+          description: ID of the associated vehicle
+          example: 123
+        imageUrl:
+          type: string
+          description: Relative path to the image file
+          example: "/uploads/vehicles/uuid-123456789-timestamp.jpg"
+        imageType:
+          type: string
+          enum: [front, back, side, interior, engine, documents, other]
+          description: Category/type of the image
+          example: "front"
+        description:
+          type: string
+          nullable: true
+          description: Optional description of the image
+          example: "Front view of the vehicle"
+        fileName:
+          type: string
+          description: Original filename of the uploaded image
+          example: "car_front.jpg"
+        mimeType:
+          type: string
+          description: MIME type of the image
+          example: "image/jpeg"
+        fileSize:
+          type: integer
+          description: Size of the file in bytes
+          example: 2048576
+        sortOrder:
+          type: integer
+          description: Order for displaying images (0-based)
+          example: 0
+        isPrimary:
+          type: boolean
+          description: Whether this is the primary/main image for the vehicle
+          example: true
+        createdAt:
+          type: string
+          format: date-time
+          description: Timestamp when the image was uploaded
+          example: "2024-01-15T10:30:00.000Z"
+        updatedAt:
+          type: string
+          format: date-time
+          description: Timestamp when the image was last updated
+          example: "2024-01-15T10:30:00.000Z"
+      required:
+        - id
+        - vehicleId
+        - imageUrl
+        - imageType
+        - fileName
+        - mimeType
+        - fileSize
+        - sortOrder
+        - isPrimary
+        - createdAt
+        - updatedAt
+
+    VehicleImageUpdateRequest:
+      type: object
+      properties:
+        imageType:
+          type: string
+          enum: [front, back, side, interior, engine, documents, other]
+          description: Category/type of the image
+          example: "interior"
+        description:
+          type: string
+          nullable: true
+          description: Optional description of the image
+          example: "Interior view of the vehicle"
+        sortOrder:
+          type: integer
+          minimum: 0
+          description: Order for displaying images (0-based)
+          example: 2
+        isPrimary:
+          type: boolean
+          description: Whether this should be the primary/main image for the vehicle
+          example: false
+      additionalProperties: false
+
+    ImageMetadata:
+      type: object
+      properties:
+        imageType:
+          type: string
+          enum: [front, back, side, interior, engine, documents, other]
+          description: Category/type of the image
+          example: "front"
+        description:
+          type: string
+          description: Optional description of the image
+          example: "Front view of the vehicle"
+        isPrimary:
+          type: boolean
+          description: Whether this should be the primary/main image for the vehicle
+          example: true
+        sortOrder:
+          type: integer
+          minimum: 0
+          description: Order for displaying images (0-based)
+          example: 0
+      additionalProperties: false
+
+
+    # Pricing Schemas
+    Price:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        vehicleType:
+          type: string
+          example: "SUV"
+        dailyRate:
+          type: string
+          format: decimal
+          example: "200.00"
+        isActive:
+          type: boolean
+          example: true
+        effectiveFrom:
+          type: string
+          format: date
+          example: "2025-01-01"
+        effectiveTo:
+          type: string
+          format: date
+          nullable: true
+          example: "2025-12-31"
+        notes:
+          type: string
+          nullable: true
+          example: "Premium SUV rate"
+        destinationId:
+          type: integer
+          example: 1
+        createdAt:
+          type: string
+          format: date-time
+          example: "2025-01-15T10:30:00.000Z"
+        updatedAt:
+          type: string
+          format: date-time
+          example: "2025-01-15T10:30:00.000Z"
+        destination:
+          $ref: '#/components/schemas/Destination'
+
+    CreatePriceRequest:
+      type: object
+      required:
+        - vehicleType
+        - dailyRate
+        - destinationId
+      properties:
+        vehicleType:
+          type: string
+          example: "SUV"
+        dailyRate:
+          type: string
+          format: decimal
+          example: "200.00"
+        destinationId:
+          type: integer
+          example: 1
+        effectiveFrom:
+          type: string
+          format: date
+          example: "2025-01-01"
+        effectiveTo:
+          type: string
+          format: date
+          nullable: true
+          example: "2025-12-31"
+        notes:
+          type: string
+          nullable: true
+          example: "Premium SUV rate for long distance"
+
+    UpdatePriceRequest:
+      type: object
+      properties:
+        vehicleType:
+          type: string
+          example: "SUV"
+        dailyRate:
+          type: string
+          format: decimal
+          example: "220.00"
+        effectiveFrom:
+          type: string
+          format: date
+          example: "2025-01-01"
+        effectiveTo:
+          type: string
+          format: date
+          nullable: true
+          example: "2025-06-30"
+        notes:
+          type: string
+          nullable: true
+          example: "Updated premium rate"
+
+    PriceResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          $ref: '#/components/schemas/Price'
+
+    PricesResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Price'
+
+    # Destination Schemas
+    Destination:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        name:
+          type: string
+          example: "Lilongwe"
+        description:
+          type: string
+          nullable: true
+          example: "Capital city of Malawi"
+        region:
+          type: string
+          example: "Central Region"
+        isActive:
+          type: boolean
+          example: true
+        distanceFromBlantyre:
+          type: integer
+          nullable: true
+          example: 350
+        estimatedTravelTime:
+          type: string
+          nullable: true
+          example: "4 hours"
+        createdAt:
+          type: string
+          format: date-time
+          example: "2025-01-15T10:00:00.000Z"
+        updatedAt:
+          type: string
+          format: date-time
+          example: "2025-01-15T10:00:00.000Z"
+
+    CreateDestinationRequest:
+      type: object
+      required:
+        - name
+        - region
+      properties:
+        name:
+          type: string
+          example: "Zomba"
+        description:
+          type: string
+          nullable: true
+          example: "Former capital and university town"
+        region:
+          type: string
+          example: "Southern Region"
+        distanceFromBlantyre:
+          type: string
+          nullable: true
+          example: "65"
+        estimatedTravelTime:
+          type: string
+          nullable: true
+          example: "1.5 hours"
+
+    DestinationResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          $ref: '#/components/schemas/Destination'
+
+    DestinationsResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Destination'
+
+    # Maintenance Schemas
+    MaintenanceRecord:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        type:
+          type: string
+          enum: [service, repair, inspection]
+          example: "service"
+        serviceType:
+          type: string
+          example: "Oil Change"
+        description:
+          type: string
+          nullable: true
+          example: "Regular oil change and filter replacement"
+        cost:
+          type: number
+          format: decimal
+          example: 45000.00
+        serviceDate:
+          type: string
+          format: date-time
+          example: "2025-07-20T08:00:00.000Z"
+        serviceProvider:
+          type: string
+          nullable: true
+          example: "John Mechanics"
+        serviceCompany:
+          type: string
+          nullable: true
+          example: "AutoCare Services Ltd"
+        serviceContact:
+          type: string
+          nullable: true
+          example: "+265 999 555 123"
+        mileageAtService:
+          type: integer
+          nullable: true
+          example: 45000
+        nextServiceDue:
+          type: string
+          format: date-time
+          nullable: true
+          example: "2025-10-20T08:00:00.000Z"
+        vehicleId:
+          type: integer
+          example: 1
+        createdAt:
+          type: string
+          format: date-time
+          example: "2025-07-20T10:30:00.000Z"
+        updatedAt:
+          type: string
+          format: date-time
+          example: "2025-07-20T10:30:00.000Z"
+        vehicle:
+          $ref: '#/components/schemas/Vehicle'
+
+    CreateMaintenanceRequest:
+      type: object
+      required:
+        - vehicleId
+        - serviceType
+        - serviceDate
+      properties:
+        vehicleId:
+          type: integer
+          example: 1
+        type:
+          type: string
+          enum: [service, repair, inspection]
+          example: "service"
+        serviceType:
+          type: string
+          example: "Oil Change"
+        description:
+          type: string
+          nullable: true
+          example: "Regular oil change and filter replacement"
+        cost:
+          type: number
+          format: decimal
+          example: 45000.00
+        serviceDate:
+          type: string
+          format: date-time
+          example: "2025-07-20T08:00:00.000Z"
+        serviceProvider:
+          type: string
+          nullable: true
+          example: "John Mechanics"
+        serviceCompany:
+          type: string
+          nullable: true
+          example: "AutoCare Services Ltd"
+        serviceContact:
+          type: string
+          nullable: true
+          example: "+265 999 555 123"
+        mileageAtService:
+          type: integer
+          nullable: true
+          example: 45000
+        nextServiceDue:
+          type: string
+          format: date-time
+          nullable: true
+          example: "2025-10-20T08:00:00.000Z"
+
+    UpdateMaintenanceRequest:
+      type: object
+      properties:
+        type:
+          type: string
+          enum: [service, repair, inspection]
+          example: "repair"
+        serviceType:
+          type: string
+          example: "Brake Repair"
+        description:
+          type: string
+          nullable: true
+          example: "Replaced brake pads and rotors"
+        cost:
+          type: number
+          format: decimal
+          example: 85000.00
+        serviceDate:
+          type: string
+          format: date-time
+          example: "2025-07-21T09:00:00.000Z"
+        serviceProvider:
+          type: string
+          nullable: true
+          example: "Mike's Auto Repair"
+        serviceCompany:
+          type: string
+          nullable: true
+          example: "Professional Auto Services"
+        serviceContact:
+          type: string
+          nullable: true
+          example: "+265 888 777 456"
+        mileageAtService:
+          type: integer
+          nullable: true
+          example: 45200
+        nextServiceDue:
+          type: string
+          format: date-time
+          nullable: true
+          example: "2025-12-21T09:00:00.000Z"
+        status:
+          type: string
+          enum: [scheduled, in-progress, completed, cancelled]
+          example: "completed"
+
+    MaintenanceResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          $ref: '#/components/schemas/MaintenanceRecord'
+
+    MaintenanceListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/MaintenanceRecord'
+    # Vehicle Utilization Report Schemas
+    VehicleUtilization:
+      type: object
+      properties:
+        vehicle_id:
+          type: integer
+          example: 1
+        vehicle_make:
+          type: string
+          example: "Toyota"
+        vehicle_model:
+          type: string
+          example: "Camry"
+        vehicle_licensePlate:
+          type: string
+          example: "BT123ABC"
+        bookingCount:
+          type: string
+          description: "Count returned as string from SQL aggregate function"
+          example: "15"
+        totalDays:
+          type: string
+          description: "Total days returned as string from SQL aggregate function"
+          example: "45"
+
+    VehicleUtilizationResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/VehicleUtilization'
+
+    # Revenue Report Schemas
+    DailyRevenue:
+      type: object
+      properties:
+        date:
+          type: string
+          format: date
+          example: "2025-01-20"
+        dailyRevenue:
+          type: string
+          description: "Revenue amount as decimal string"
+          example: "1250.00"
+        paymentCount:
+          type: string
+          description: "Payment count returned as string from SQL aggregate"
+          example: "5"
+
+    RevenueSummary:
+      type: object
+      properties:
+        totalRevenue:
+          type: string
+          description: "Total revenue as decimal string"
+          example: "45750.00"
+        totalPayments:
+          type: string
+          description: "Total payments count as string"
+          example: "156"
+        averagePayment:
+          type: string
+          description: "Average payment amount as decimal string"
+          example: "293.27"
+
+    RevenueData:
+      type: object
+      properties:
+        revenue:
+          type: array
+          items:
+            $ref: '#/components/schemas/DailyRevenue'
+        summary:
+          $ref: '#/components/schemas/RevenueSummary'
+
+    RevenueResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          $ref: '#/components/schemas/RevenueData'
+
+    # Booking Report Schemas
+    BookingStats:
+      type: object
+      properties:
+        booking_status:
+          type: string
+          enum: [completed, active, cancelled, pending]
+          example: "completed"
+        count:
+          type: string
+          description: "Booking count as string from SQL aggregate"
+          example: "85"
+        totalAmount:
+          type: string
+          description: "Total amount as decimal string"
+          example: "25500.00"
+
+    MonthlyTrend:
+      type: object
+      properties:
+        year:
+          type: string
+          example: "2025"
+        month:
+          type: string
+          example: "1"
+        bookingCount:
+          type: string
+          description: "Monthly booking count as string"
+          example: "110"
+        monthlyRevenue:
+          type: string
+          description: "Monthly revenue as decimal string"
+          example: "30600.00"
+
+    BookingData:
+      type: object
+      properties:
+        bookingStats:
+          type: array
+          items:
+            $ref: '#/components/schemas/BookingStats'
+        monthlyTrends:
+          type: array
+          items:
+            $ref: '#/components/schemas/MonthlyTrend'
+
+
+    # Maintenance Report Schemas
+    MaintenanceStats:
+      type: object
+      properties:
+        maintenance_serviceType:
+          type: string
+          example: "Oil Change"
+        count:
+          type: string
+          description: "Service count as string from SQL aggregate"
+          example: "25"
+        totalCost:
+          type: string
+          description: "Total cost as decimal string"
+          example: "1250.00"
+        averageCost:
+          type: string
+          description: "Average cost as decimal string"
+          example: "50.00"
+
+    VehicleInfo:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        make:
+          type: string
+          example: "Toyota"
+        model:
+          type: string
+          example: "Camry"
+        licensePlate:
+          type: string
+          example: "BT123ABC"
+        status:
+          type: string
+          enum: [available, maintenance, rented]
+          example: "available"
+
+    UpcomingMaintenance:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        serviceType:
+          type: string
+          example: "Oil Change"
+        serviceDate:
+          type: string
+          format: date-time
+          example: "2025-01-15T00:00:00.000Z"
+        nextServiceDate:
+          type: string
+          format: date-time
+          example: "2025-02-15T00:00:00.000Z"
+        cost:
+          type: string
+          description: "Cost as decimal string"
+          example: "50.00"
+        description:
+          type: string
+          example: "Regular oil change"
+        vehicleId:
+          type: integer
+          example: 1
+        createdAt:
+          type: string
+          format: date-time
+          example: "2025-01-15T10:00:00.000Z"
+        updatedAt:
+          type: string
+          format: date-time
+          example: "2025-01-15T10:00:00.000Z"
+        vehicle:
+          $ref: '#/components/schemas/VehicleInfo'
+
+    MaintenanceReportData:
+      type: object
+      properties:
+        maintenanceStats:
+          type: array
+          items:
+            $ref: '#/components/schemas/MaintenanceStats'
+        upcomingMaintenance:
+          type: array
+          items:
+            $ref: '#/components/schemas/UpcomingMaintenance'
+
+    MaintenanceReportResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          $ref: '#/components/schemas/MaintenanceReportData'
+
+    # Dashboard Schemas
+    VehicleStats:
+      type: object
+      properties:
+        totalVehicles:
+          type: string
+          description: "Total vehicles count as string"
+          example: "25"
+        availableVehicles:
+          type: string
+          description: "Available vehicles count as string"
+          example: "18"
+        rentedVehicles:
+          type: string
+          description: "Rented vehicles count as string"
+          example: "5"
+        maintenanceVehicles:
+          type: string
+          description: "Vehicles in maintenance count as string"
+          example: "2"
+
+    BookingDashboardStats:
+      type: object
+      properties:
+        totalBookings:
+          type: string
+          description: "Total bookings count as string"
+          example: "156"
+        activeBookings:
+          type: string
+          description: "Active bookings count as string"
+          example: "12"
+        completedBookings:
+          type: string
+          description: "Completed bookings count as string"
+          example: "135"
+        totalBookingValue:
+          type: string
+          description: "Total booking value as decimal string"
+          example: "45750.00"
+
+    PaymentStats:
+      type: object
+      properties:
+        totalRevenue:
+          type: string
+          description: "Total revenue as decimal string"
+          example: "42300.00"
+        totalPayments:
+          type: string
+          description: "Total payments count as string"
+          example: "148"
+
+    MaintenanceDashboardStats:
+      type: object
+      properties:
+        totalMaintenance:
+          type: string
+          description: "Total maintenance records count as string"
+          example: "45"
+        totalMaintenanceCost:
+          type: string
+          description: "Total maintenance cost as decimal string"
+          example: "6250.00"
+
+    DashboardData:
+      type: object
+      properties:
+        vehicles:
+          $ref: '#/components/schemas/VehicleStats'
+        bookings:
+          $ref: '#/components/schemas/BookingDashboardStats'
+        payments:
+          $ref: '#/components/schemas/PaymentStats'
+        maintenance:
+          $ref: '#/components/schemas/MaintenanceDashboardStats'
+
+    DashboardResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          $ref: '#/components/schemas/DashboardData'
+
+    # Popular Destinations Schemas
+    PopularDestination:
+      type: object
+      properties:
+        booking_destination:
+          type: string
+          example: "Lilongwe"
+        bookingCount:
+          type: string
+          description: "Booking count as string from SQL aggregate"
+          example: "45"
+        totalRevenue:
+          type: string
+          description: "Total revenue as decimal string"
+          example: "13500.00"
+
+    PopularDestinationsResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/PopularDestination'
+    UserResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        firstName:
+          type: string
+          example: "John"
+        lastName:
+          type: string
+          example: "Doe"
+        email:
+          type: string
+          format: email
+          example: "john.doe@example.com"
+        role:
+          type: string
+          enum: [admin, manager, staff]
+          example: "staff"
+        status:
+          type: string
+          enum: [active, inactive, suspended]
+          example: "active"
+        lastLogin:
+          type: string
+          format: date-time
+          nullable: true
+          example: "2023-12-01T10:30:00.000Z"
+        createdAt:
+          type: string
+          format: date-time
+          example: "2023-11-01T09:00:00.000Z"
+
+    CreateUserRequest:
+      type: object
+      required:
+        - firstName
+        - lastName
+        - email
+        - password
+      properties:
+        firstName:
+          type: string
+          example: "John"
+          minLength: 1
+        lastName:
+          type: string
+          example: "Doe"
+          minLength: 1
+        email:
+          type: string
+          format: email
+          example: "john.doe@example.com"
+        password:
+          type: string
+          format: password
+          example: "securePassword123"
+          minLength: 6
+        role:
+          type: string
+          enum: [admin, manager, staff]
+          example: "staff"
+          default: "staff"
+        status:
+          type: string
+          enum: [active, inactive, suspended]
+          example: "active"
+          default: "active"
+
+    UpdateUserRequest:
+      type: object
+      properties:
+        firstName:
+          type: string
+          example: "John"
+          minLength: 1
+        lastName:
+          type: string
+          example: "Doe"
+          minLength: 1
+        email:
+          type: string
+          format: email
+          example: "john.doe@example.com"
+        password:
+          type: string
+          format: password
+          example: "newSecurePassword123"
+          minLength: 6
+        role:
+          type: string
+          enum: [admin, manager, staff]
+          example: "manager"
+        status:
+          type: string
+          enum: [active, inactive, suspended]
+          example: "active"
+
+    LoginRequest:
+      type: object
+      required:
+        - email
+        - password
+      properties:
+        email:
+          type: string
+          format: email
+          example: "john.doe@example.com"
+        password:
+          type: string
+          format: password
+          example: "securePassword123"
+
+    TokenResponse:
+      type: object
+      properties:
+        accessToken:
+          type: string
+          example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjEsImVtYWlsIjoiam9obi5kb2VAZXhhbXBsZS5jb20iLCJyb2xlIjoic3RhZmYiLCJpYXQiOjE2OTk4NzY1NDMsImV4cCI6MTY5OTg3NzQ0MywiYXVkIjoieW91ci1hcHAtdXNlcnMiLCJpc3MiOiJ5b3VyLWFwcC1uYW1lIn0.signature"
+        refreshToken:
+          type: string
+          example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjEsImVtYWlsIjoiam9obi5kb2VAZXhhbXBsZS5jb20iLCJyb2xlIjoic3RhZmYiLCJpYXQiOjE2OTk4NzY1NDMsImV4cCI6MTcwMDQ4MTM0MywiYXVkIjoieW91ci1hcHAtdXNlcnMiLCJpc3MiOiJ5b3VyLWFwcC1uYW1lIn0.signature"
+        expiresIn:
+          type: string
+          example: "15m"
+
+    UserStats:
+      type: object
+      properties:
+        totalUsers:
+          type: integer
+          example: 150
+        activeUsers:
+          type: integer
+          example: 135
+        adminUsers:
+          type: integer
+          example: 5
+
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT access token for authentication
+
+security:
+  - BearerAuth: []
+
+
+tags:
+  - name: Bookings
+    description: Operations related to booking management
+  - name: Vehicles
+    description: Operations related to vehicle fleet management
+  - name: Reports
+    description: Reporting and analytics endpoints for fleet management system
+  - name: Pricing
+    description: Vehicle pricing management
+  - name: Destinations
+    description: Destination management
+  - name: Maintenance
+    description: Vehicle maintenance management
+  - name: Vehicle Images
+    description: Operations related to vehicle image management
