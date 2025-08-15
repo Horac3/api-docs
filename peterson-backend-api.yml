@@ -3402,15 +3402,15 @@ components:
           type: integer
           example: 5
 
-  securitySchemes:
-    BearerAuth:
-      type: http
-      scheme: bearer
-      bearerFormat: JWT
-      description: JWT access token for authentication
+#   securitySchemes:
+#     BearerAuth:
+#       type: http
+#       scheme: bearer
+#       bearerFormat: JWT
+#       description: JWT access token for authentication
 
-security:
-  - BearerAuth: []
+# security:
+#   - BearerAuth: []
 
 
 tags:
