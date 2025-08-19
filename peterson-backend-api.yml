@@ -2735,6 +2735,63 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/Destination'
+    # Destination with related prices (for GET /destinations/{id})
+    DestinationWithPrices:
+      allOf:
+        - $ref: '#/components/schemas/Destination'
+        - type: object
+          properties:
+            prices:
+              type: array
+              items:
+                $ref: '#/components/schemas/Price'
+
+    # Update destination request (for PUT /destinations/{id})
+    UpdateDestinationRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          example: "Zomba"
+        description:
+          type: string
+          nullable: true
+          example: "Updated description for former capital"
+        region:
+          type: string
+          example: "Southern Region"
+        isActive:
+          type: boolean
+          example: true
+        distanceFromBlantyre:
+          type: string
+          nullable: true
+          example: "65"
+        estimatedTravelTime:
+          type: string
+          nullable: true
+          example: "1.5 hours"
+
+    # Response for destination with prices (for GET /destinations/{id} and PUT /destinations/{id})
+    DestinationWithPricesResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          $ref: '#/components/schemas/DestinationWithPrices'
+
+    # Success message response (for DELETE /destinations/{id})
+    SuccessResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: "Destination deleted successfully"
 
     # Maintenance Schemas
     MaintenanceRecord:
