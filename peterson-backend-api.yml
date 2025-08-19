@@ -1107,7 +1107,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/SuccessResponse'
+                $ref: '#/components/schemas/DestinationSuccessResponse'
         '400':
           description: Bad request - destination has active prices
           content:
@@ -2927,7 +2927,7 @@ components:
           $ref: '#/components/schemas/DestinationWithPrices'
 
     # Success message response (for DELETE /destinations/{id})
-    SuccessResponse:
+    DestinationSuccessResponse:
       type: object
       properties:
         success:
