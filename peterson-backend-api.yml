@@ -775,7 +775,7 @@ paths:
                 success: false
                 error: "Failed to delete image"
 
-  /api/prices:
+  /api/pricing:
     get:
       tags:
         - Pricing
@@ -826,7 +826,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
-  /api/prices/filter:
+  /api/pricing/filter:
     get:
       tags:
         - Pricing
@@ -859,7 +859,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
-  /api/prices/{id}:
+  /api/pricing/{id}:
     put:
       tags:
         - Pricing
